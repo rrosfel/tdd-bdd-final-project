@@ -26,7 +26,6 @@ While debugging just these tests it's convenient to use this:
 import os
 import logging
 import unittest
-from decimal import Decimal
 from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
@@ -86,7 +85,7 @@ class TestProductModel(unittest.TestCase):
         # Dada disponible no booleana
         invalid_available = {"name": "X", "description": "D", "price": "1.0", "available": "no", "category": "CLOTHS"}
         self.assertRaises(DataValidationError, product.deserialize, invalid_available)
-        
+
         # Categoria inexistent
         invalid_category = {"name": "X", "description": "D", "price": "1.0", "available": True, "category": "ERROR"}
         self.assertRaises(DataValidationError, product.deserialize, invalid_category)
