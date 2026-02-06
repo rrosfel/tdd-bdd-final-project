@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -82,6 +82,18 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(product.price, 12.50)
         self.assertEqual(product.category, Category.CLOTHS)
 
+        # COBERTURA: Deserialització d'errors (Línies 139, 145, 148-149)
+        # Dada disponible no booleana
+        invalid_available = {"name": "X", "description": "D", "price": "1.0", "available": "no", "category": "CLOTHS"}
+        self.assertRaises(DataValidationError, product.deserialize, invalid_available)
+        
+        # Categoria inexistent
+        invalid_category = {"name": "X", "description": "D", "price": "1.0", "available": True, "category": "ERROR"}
+        self.assertRaises(DataValidationError, product.deserialize, invalid_category)
+
+        # Dada que no és un diccionari (TypeError)
+        self.assertRaises(DataValidationError, product.deserialize, ["llista", "no", "dict"])
+
     def test_add_a_product(self):
         """It should Create a product and add it to the database"""
         products = Product.all()
@@ -93,17 +105,13 @@ class TestProductModel(unittest.TestCase):
         self.assertIsNotNone(product.id)
         products = Product.all()
         self.assertEqual(len(products), 1)
-        # Check that it matches the original product
-        new_product = products[0]
-        self.assertEqual(new_product.name, product.name)
-        self.assertEqual(new_product.description, product.description)
-        self.assertEqual(Decimal(new_product.price), product.price)
-        self.assertEqual(new_product.available, product.available)
-        self.assertEqual(new_product.category, product.category)
+        self.assertEqual(products[0].id, product.id)
+        self.assertEqual(products[0].name, product.name)
+        self.assertEqual(products[0].description, product.description)
+        self.assertEqual(products[0].price, product.price)
+        self.assertEqual(products[0].available, product.available)
+        self.assertEqual(products[0].category, product.category)
 
-    #
-    # ADD YOUR TEST CASES HERE
-    #
     def test_read_a_product(self):
         """It should Read a Product"""
         product = ProductFactory()
@@ -117,7 +125,12 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found_product.description, product.description)
         self.assertEqual(found_product.price, product.price)
 
-   def test_update_a_product(self):
+        # COBERTURA: Cerca per preu com a cadena de text (Línies 217-221)
+        price_str = str(product.price)
+        found_by_price = Product.find_by_price(price_str)
+        self.assertEqual(found_by_price[0].price, product.price)
+
+    def test_update_a_product(self):
         """It should Update a Product"""
         product = ProductFactory()
         product.id = None
@@ -135,6 +148,10 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(len(products), 1)
         self.assertEqual(products[0].id, original_id)
         self.assertEqual(products[0].description, "testing")
+
+        # COBERTURA: Actualitzar sense ID (Línia 106)
+        product.id = None
+        self.assertRaises(DataValidationError, product.update)
 
     def test_delete_a_product(self):
         """It should Delete a Product"""
@@ -155,9 +172,9 @@ class TestProductModel(unittest.TestCase):
             product.create()
         # See if we get back 5 products
         products = Product.all()
-        self.assertEqual(len(products), 5)    
+        self.assertEqual(len(products), 5)
 
-     def test_find_by_name(self):
+    def test_find_by_name(self):
         """It should Find a Product by Name"""
         products = ProductFactory.create_batch(5)
         for product in products:
@@ -169,7 +186,7 @@ class TestProductModel(unittest.TestCase):
         for product in found:
             self.assertEqual(product.name, name)
 
-      def test_find_by_category(self):
+    def test_find_by_category(self):
         """It should Find Products by Category"""
         products = ProductFactory.create_batch(10)
         for product in products:
@@ -181,7 +198,7 @@ class TestProductModel(unittest.TestCase):
         for product in found:
             self.assertEqual(product.category, category)
 
-      def test_find_by_availability(self):
+    def test_find_by_availability(self):
         """It should Find Products by Availability"""
         products = ProductFactory.create_batch(10)
         for product in products:
